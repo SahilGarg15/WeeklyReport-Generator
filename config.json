@@ -1,0 +1,23 @@
+﻿{
+  "company_name": "My Startup",
+  "report_currency": "USD",
+  "report_format": "pdf",
+  "reports_dir": "reports",
+  "data_file": "data/weekly_data.csv",
+  "groq_model": "llama-3.1-8b-instant",
+  "max_retries": 3,
+  "email": {
+    "sender": "",
+    "recipients": [],
+    "cc": [],
+    "smtp_host": "smtp.gmail.com",
+    "smtp_port": 465
+  },
+  "anomaly": {
+    "z_score_threshold": 2.0,
+    "spike_pct_threshold": 20.0,
+    "drop_pct_threshold": -15.0
+  },
+  "log_level": "INFO",
+  "enable_token_tracking": true
+}
