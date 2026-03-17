@@ -49,6 +49,8 @@ def generate_pdf(
     anomaly_report: Any,
     company_name: str | None = None,
     out_path: str | Path | None = None,
+    alerts: list[str] = None,
+    trend_info: str = None,
 ) -> Path:
     """
     Build a professional PDF report using ReportLab.
@@ -151,9 +153,24 @@ def generate_pdf(
     story.append(kpi_table)
     story.append(Spacer(1, 0.4 * cm))
 
+    # ── Trend Analysis ────────────────────────────────────────────
+    if trend_info:
+        story.append(HRFlowable(width=W, thickness=0.5, color=colors.HexColor("#bdc3c7")))
+        story.append(Paragraph("Trend Analysis", h2_style))
+        story.append(Paragraph(trend_info, body_style))
+        story.append(Spacer(1, 0.2 * cm))
+
+    # ── Alerts / Risks ────────────────────────────────────────────
+    if alerts:
+        story.append(HRFlowable(width=W, thickness=0.5, color=colors.HexColor("#bdc3c7")))
+        story.append(Paragraph("Business Alerts / Risks 🚨", h2_style))
+        for alert in alerts:
+            story.append(Paragraph(f"• {alert}", risk_style))
+        story.append(Spacer(1, 0.2 * cm))
+
     # ── Executive Summary ─────────────────────────────────────────
     story.append(HRFlowable(width=W, thickness=0.5, color=colors.HexColor("#bdc3c7")))
-    story.append(Paragraph("Executive Summary", h2_style))
+    story.append(Paragraph("AI Insights: Executive Summary", h2_style))
     story.append(Paragraph(llm_result.executive_summary, body_style))
 
     # ── Key Risks ─────────────────────────────────────────────────
@@ -230,6 +247,8 @@ def generate_csv(
     anomaly_report: Any,
     full_df: Any | None = None,
     out_path: str | Path | None = None,
+    alerts: list[str] = None,
+    trend_info: str = None,
 ) -> Path:
     """
     Generate a structured CSV report.
@@ -248,6 +267,18 @@ def generate_csv(
             label = key.replace("_", " ").title()
             w.writerow([label, val])
 
+        w.writerow([])
+
+        # ── Trend & Alerts ────────────────────────────────────────
+        w.writerow(["SECTION", "TREND ANALYSIS & ALERTS"])
+        if trend_info:
+            w.writerow(["Trend Info", trend_info])
+        if alerts:
+            w.writerow(["Business Alerts", ""])
+            for alert in alerts:
+                w.writerow(["", alert])
+        else:
+            w.writerow(["Business Alerts", "No active alerts"])
         w.writerow([])
 
         # ── AI Insights section ───────────────────────────────────

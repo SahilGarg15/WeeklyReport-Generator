@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 generate_report.py
 ───────────────────
@@ -63,6 +63,8 @@ def main() -> int:
     from src.anomaly_detection import AnomalyDetector
     from src.report_generator import generate_pdf, generate_csv
     from src.email_sender import EmailSender
+    from src.trend_analysis import analyze_3_week_trend
+    from src.alert_engine import generate_alerts
 
     log = get_logger("generate_report")
 
@@ -82,6 +84,23 @@ def main() -> int:
     kpi_result = engine.compute()
     kpi_payload = kpi_result.to_prompt_payload()
     full_df = engine.full_summary_df()
+    
+    # ── 2b. Trend & Alerts ────────────────────────────────────────
+    log.info("Analyzing trends and checking alerts…")
+    trend_info = f"3-Week Revenue Trend is {analyze_3_week_trend(df, 'revenue')}."
+    alerts = generate_alerts(df, kpi_result)
+
+    # ── 2c. Update History ────────────────────────────────────────
+    history_path = Path("data/history.csv")
+    history_data = {
+         "week": kpi_result.current_week,
+         "revenue": kpi_result.revenue,
+         "users": kpi_result.users,
+         "churn": kpi_result.churn_rate,
+         "arpu": kpi_result.arpu,
+         "retention": kpi_result.retention_rate
+    }
+    pd.DataFrame([history_data]).to_csv(history_path, mode='a', header=not history_path.exists(), index=False)
 
     # ── 3. Anomaly Detection ──────────────────────────────────────
     log.info("Running anomaly detection…")
@@ -111,12 +130,18 @@ def main() -> int:
 
     if report_format in ("pdf", "both"):
         log.info("Generating PDF report…")
-        pdf_path = generate_pdf(kpi_payload, llm_result, anomaly_report, company_name=company)
+        pdf_path = generate_pdf(
+            kpi_payload, llm_result, anomaly_report, 
+            company_name=company, alerts=alerts, trend_info=trend_info
+        )
         generated_files.append(pdf_path)
 
     if report_format in ("csv", "both"):
         log.info("Generating CSV report…")
-        csv_report_path = generate_csv(kpi_payload, llm_result, anomaly_report, full_df=full_df)
+        csv_report_path = generate_csv(
+            kpi_payload, llm_result, anomaly_report, 
+            full_df=full_df, alerts=alerts, trend_info=trend_info
+        )
         generated_files.append(csv_report_path)
 
     # ── 6. Email Delivery ─────────────────────────────────────────
@@ -153,6 +178,12 @@ def main() -> int:
         print("\n  Anomalies:")
         for line in anomaly_report.summary_lines():
             print(f"    ⚠  {line}")
+    if trend_info:
+        print(f"\n  Trend Analysis: {trend_info}")
+    if alerts:
+        print("\n  Business Alerts 🚨:")
+        for a in alerts:
+            print(f"    • {a}")
     if llm_result.key_risks:
         print("\n  Key Risks:")
         for r in llm_result.key_risks:

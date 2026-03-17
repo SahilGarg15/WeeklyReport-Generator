@@ -172,7 +172,8 @@ def _read_bytes(path: Path) -> bytes:
 
 # ── Session state init ────────────────────────────────────────────
 for key in ("df", "kpi_result", "kpi_payload", "full_df",
-            "anomaly_report", "llm_result", "pdf_path", "csv_path"):
+            "anomaly_report", "llm_result", "pdf_path", "csv_path",
+            "trend_info", "alerts", "history_df"):
     if key not in st.session_state:
         st.session_state[key] = None
 
@@ -205,6 +206,8 @@ with st.sidebar:
             try:
                 from src.kpi_engine import KPIEngine
                 from src.anomaly_detection import AnomalyDetector
+                from src.trend_analysis import analyze_3_week_trend
+                from src.alert_engine import generate_alerts
 
                 if uploaded is not None:
                     df = pd.read_csv(uploaded)
@@ -226,11 +229,33 @@ with st.sidebar:
                 detector = AnomalyDetector(df)
                 anomaly_report = detector.detect(metrics=["revenue", "users"])
 
+                trend_info = f"3-Week Revenue Trend is {analyze_3_week_trend(df, 'revenue')}."
+                alerts = generate_alerts(df, kpi_result)
+
+                history_path = Path("data/history.csv")
+                history_data = {
+                     "week": kpi_result.current_week,
+                     "revenue": kpi_result.revenue,
+                     "users": kpi_result.users,
+                     "churn": kpi_result.churn_rate,
+                     "arpu": kpi_result.arpu,
+                     "retention": kpi_result.retention_rate
+                }
+                pd.DataFrame([history_data]).to_csv(history_path, mode='a', header=not history_path.exists(), index=False)
+                
+                try:
+                    history_df = pd.read_csv(history_path)
+                except Exception:
+                    history_df = None
+
                 st.session_state.df           = df
                 st.session_state.kpi_result   = kpi_result
                 st.session_state.kpi_payload  = kpi_payload
                 st.session_state.full_df      = full_df
                 st.session_state.anomaly_report = anomaly_report
+                st.session_state.trend_info   = trend_info
+                st.session_state.alerts       = alerts
+                st.session_state.history_df   = history_df
                 st.session_state.llm_result   = None  # reset on new data
                 st.session_state.pdf_path     = None
                 st.session_state.csv_path     = None
@@ -399,6 +424,31 @@ else:
 
     st.markdown("<hr>", unsafe_allow_html=True)
 
+    # ── Alerts ────────────────────────────────────────────────────
+    alerts = st.session_state.alerts
+    if alerts:
+        section("🚨 Business Alerts")
+        for alert in alerts:
+            st.error(f"**{alert}**")
+        st.markdown("<hr>", unsafe_allow_html=True)
+
+    # ── Trend Charts ──────────────────────────────────────────────
+    section("📈 Trend Analysis")
+    chart_col1, chart_col2 = st.columns(2)
+    hist_df = st.session_state.history_df
+    
+    # We display trend using full_df from CSV over weeks
+    f_df = st.session_state.full_df
+    with chart_col1:
+        st.markdown(f"##### {st.session_state.trend_info}")
+        st.markdown("##### Revenue Trend")
+        st.line_chart(f_df.set_index("week")["revenue"])
+    with chart_col2:
+        st.markdown("##### User Trend")
+        st.line_chart(f_df.set_index("week")["users"])
+
+    st.markdown("<hr>", unsafe_allow_html=True)
+
     # ── Data Preview ──────────────────────────────────────────────
     with st.expander("🗂  Full Weekly Data Table", expanded=False):
         display_df = st.session_state.full_df.copy()
@@ -531,6 +581,8 @@ else:
                 llm,
                 st.session_state.anomaly_report,
                 company_name=company_name,
+                alerts=st.session_state.alerts,
+                trend_info=st.session_state.trend_info,
             )
             st.session_state.pdf_path = out
             return _read_bytes(out)
@@ -552,6 +604,8 @@ else:
                 llm,
                 st.session_state.anomaly_report,
                 full_df=st.session_state.full_df,
+                alerts=st.session_state.alerts,
+                trend_info=st.session_state.trend_info,
             )
             st.session_state.csv_path = out
             return _read_bytes(out)

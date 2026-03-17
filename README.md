@@ -1,4 +1,4 @@
-﻿# AI Automated Weekly Reporting System
+# AI Automated Weekly Reporting System
 
 A self-contained Python tool that turns a CSV of weekly business data into a
 professional PDF report with AI-generated insights — delivered by email.
@@ -11,6 +11,9 @@ Built entirely on **free tools**: Groq (LLM), Gmail SMTP, ReportLab, Streamlit.
 
 | | Feature | Detail |
 |---|---|---|
+| 📈 | **Historical Tracking** | Saves and visualizes KPI runs over time in `history.csv` |
+| 📉 | **Trend Analysis** | 3-week trailing trends, WoW changes, and moving averages |
+| 🚨 | **Business Alerts** | Rule-based engine capturing revenue drops and high churn |
 | 📊 | **KPI Engine** | Revenue/user/churn growth, ARPU, retention, 3-week MA, trend labels |
 | 🤖 | **AI Insights** | Groq API (Llama 3.1) — executive summary, key risks, recommendations |
 | ⚠️ | **Anomaly Detection** | Z-score, spike/drop thresholds, trend deviation |
@@ -39,12 +42,15 @@ Weekly Report Generator/
 │   ├── logger.py           # Rotating file + console logger
 │   ├── kpi_engine.py       # KPIEngine — computes all metrics from DataFrame
 │   ├── anomaly_detection.py# AnomalyDetector — z-score, spikes, drops
+│   ├── trend_analysis.py   # TrendAnalysis — moving averages, multi-week trends
+│   ├── alert_engine.py     # AlertEngine — rules-based business thresholds
 │   ├── llm_summary.py      # LLMSummary — Groq API with retry + fallback
 │   ├── report_generator.py # generate_pdf() and generate_csv()
 │   └── email_sender.py     # EmailSender — Gmail SMTP with attachment
 │
 ├── data/
-│   └── weekly_data.csv     # Input data (week, revenue, users, churn)
+│   ├── weekly_data.csv     # Input data (week, revenue, users, churn)
+│   └── history.csv         # Automatically auto-appends historical KPIs
 │
 ├── reports/                # Generated reports saved here (gitignored)
 └── logs/                   # Runtime logs (gitignored)
